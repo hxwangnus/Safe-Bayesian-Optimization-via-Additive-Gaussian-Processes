@@ -1,0 +1,35 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+env/
+venv/
+.venv/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+
+# Jupyter / checkpoints
+.ipynb_checkpoints/
+
+# Logs / outputs
+*.log
+*.out
+
+# Figures / experiment results (按需保留)
+results/
+*.png
+*.pdf
+*.npy
+*.csv
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db

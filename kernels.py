@@ -1,0 +1,63 @@
+import torch
+import gpytorch
+from gpytorch.kernels import RBFKernel, ProductKernel, ScaleKernel, AdditiveKernel
+
+def make_safe_bo_kernel(dtype=torch.double, device="cpu"):
+    comps = []
+    # component 0: dims=(tensor(0), tensor(1), tensor(2)), eff_outputscale=0.110905
+    prod = RBFKernel(active_dims=(0,))
+    prod = ProductKernel(prod, RBFKernel(active_dims=(1,)))
+    prod = ProductKernel(prod, RBFKernel(active_dims=(2,)))
+    k = ScaleKernel(prod)
+    k.base_kernel.kernels[0].initialize(lengthscale=0.382012)
+    k.base_kernel.kernels[1].initialize(lengthscale=4.97979)
+    k.base_kernel.kernels[2].initialize(lengthscale=1.35749)
+    k.initialize(outputscale=0.110905)
+    comps.append(k)
+    # component 1: dims=(tensor(1), tensor(2)), eff_outputscale=0.0251577
+    prod = RBFKernel(active_dims=(1,))
+    prod = ProductKernel(prod, RBFKernel(active_dims=(2,)))
+    k = ScaleKernel(prod)
+    k.base_kernel.kernels[0].initialize(lengthscale=0.173138)
+    k.base_kernel.kernels[1].initialize(lengthscale=5.18369)
+    k.initialize(outputscale=0.0251577)
+    comps.append(k)
+    # component 2: dims=(tensor(0),), eff_outputscale=0.0168713
+    k = ScaleKernel(RBFKernel(active_dims=(0,)))
+    k.base_kernel.initialize(lengthscale=0.326926)
+    k.initialize(outputscale=0.0168713)
+    comps.append(k)
+    # component 3: dims=(tensor(0), tensor(1)), eff_outputscale=0.00637354
+    prod = RBFKernel(active_dims=(0,))
+    prod = ProductKernel(prod, RBFKernel(active_dims=(1,)))
+    k = ScaleKernel(prod)
+    k.base_kernel.kernels[0].initialize(lengthscale=2.9574)
+    prod = RBFKernel(active_dims=(0,))
+    prod = ProductKernel(prod, RBFKernel(active_dims=(1,)))
+    k = ScaleKernel(prod)
+    prod = RBFKernel(active_dims=(0,))
+    prod = ProductKernel(prod, RBFKernel(active_dims=(1,)))
+    k = ScaleKernel(prod)
+    prod = RBFKernel(active_dims=(0,))
+    prod = ProductKernel(prod, RBFKernel(active_dims=(1,)))
+    k = ScaleKernel(prod)
+    k.base_kernel.kernels[0].initialize(lengthscale=2.9574)
+    prod = RBFKernel(active_dims=(0,))
+    prod = ProductKernel(prod, RBFKernel(active_dims=(1,)))
+    k = ScaleKernel(prod)
+    prod = RBFKernel(active_dims=(0,))
+    prod = ProductKernel(prod, RBFKernel(active_dims=(1,)))
+    prod = RBFKernel(active_dims=(0,))
+    prod = RBFKernel(active_dims=(0,))
+    prod = ProductKernel(prod, RBFKernel(active_dims=(1,)))
+    k = ScaleKernel(prod)
+    k.base_kernel.kernels[0].initialize(lengthscale=2.9574)
+    k.base_kernel.kernels[1].initialize(lengthscale=2.1265)
+    k.initialize(outputscale=0.00637354)
+    comps.append(k)
+    # component 4: dims=(tensor(2),), eff_outputscale=0.00517552
+    k = ScaleKernel(RBFKernel(active_dims=(2,)))
+    k.base_kernel.initialize(lengthscale=2.7951)
+    k.initialize(outputscale=0.00517552)
+    comps.append(k)
+    return AdditiveKernel(*comps).to(device)
