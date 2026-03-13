@@ -14,9 +14,7 @@ torch.set_num_interop_threads(1)
 
 # --- Matplotlib backend setup ---
 import matplotlib
-# Force an interactive backend (TkAgg is usually available on Anaconda/Windows)
-matplotlib.use("TkAgg")
-
+matplotlib.use("Agg")   # use non-interactive backend for WSL/headless environments
 import matplotlib.pyplot as plt
 
 import gpytorch
@@ -27,7 +25,6 @@ from safectrlbo import SafeCtrlBO
 # Global settings
 # ----------------------------------------
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# device = torch.device("cpu")
 
 # Measurement noise (for GP likelihood)
 noise_var = 0.01 ** 2
@@ -130,7 +127,7 @@ def run_experiment(
         init_Y_safe = None
         safety_threshold = None
 
-        # Build additive kernel k1 + k2
+        # Build additive kernel k1 + k2 + k1*k2
         base_kernel = make_additive_kernel_k1_k2_k1k2()
 
         # Initialize SafeCtrlBO in "no safety" mode
@@ -159,6 +156,7 @@ def run_experiment(
 
             # Suggest next x
             x_next, mode, sets = algo.suggest(num_candidates=num_candidates)  # x_next: (1,2)
+
             # Evaluate objective
             y_next = camelback_torch(x_next)  # (1,)
             y_next_val = y_next.item()
@@ -189,8 +187,8 @@ def run_experiment(
 
 
 def main():
-    num_runs = 5
-    iterations = 100
+    num_runs = 20
+    iterations = 50
 
     all_simple_regret_matrix = run_experiment(
         num_runs=num_runs,
@@ -217,19 +215,17 @@ def main():
     plt.yscale('log')
     plt.xlabel('Optimization Step')
     plt.ylabel('Simple Regret')
-    plt.title('Simple Regret over Optimization Steps (SafeCtrlBO, k1 + k2 kernel, no safety)')
+    plt.title('Simple Regret over Optimization Steps (SafeCtrlBO, k1 + k2 + k1*k2 kernel, no safety)')
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
 
     out_path = "camelback_simple_regret.png"
-    plt.savefig(out_path, dpi=150)
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close()
     print(f"Figure saved to: {out_path}")
-
-    plt.show()
     print("Done plotting.")
 
 
 if __name__ == "__main__":
     main()
-

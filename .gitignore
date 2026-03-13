@@ -20,7 +20,7 @@ dist/
 *.log
 *.out
 
-# Figures / experiment results (按需保留)
+# Figures / experiment results
 results/
 *.png
 *.pdf
