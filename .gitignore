@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Virtual environments
 env/
@@ -20,12 +23,10 @@ dist/
 *.log
 *.out
 
-# Figures / experiment results
+# Experiment results
 results/
-*.png
-*.pdf
+# camelback_simple_regret.png
 *.npy
-*.csv
 
 # VS Code
 .vscode/

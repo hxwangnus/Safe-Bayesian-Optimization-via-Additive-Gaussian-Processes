@@ -21,6 +21,7 @@ class SafeCtrlBO:
         tau=0.1,
         device="cpu",
         init_training_iter=0,  # number of training steps at initialization (0 => use DARTS hyper as-is)
+        sobol_seed=None,
     ):
         self.device = device
         self.bounds = bounds.to(device)
@@ -32,6 +33,11 @@ class SafeCtrlBO:
         self.switch_time = switch_time
         self.beta_fn = beta_fn or (lambda n: 2.0 * torch.log(torch.tensor(float(n + 1.0))))
         self.tau = tau
+        self._sobol_engine = SobolEngine(
+            dimension=self.bounds.shape[1],
+            scramble=True,
+            seed=sobol_seed,
+        )
 
         self.X = init_X.to(device)
         self.Yf = init_Y_perf.to(device)
@@ -166,10 +172,11 @@ class SafeCtrlBO:
         # Use SobolEngine instead, to avoid BoTorch
         # SobolEngine draws points in [0,1]^d, then we affine-transform them to [l_i, u_i]
         # time complexity is O(n*q), n is the num of observed data, q is num of candidates
-        d = self.bounds.shape[1]
-        engine = SobolEngine(dimension=d, scramble=True)
         # shape: (num_candidates, d), values in [0, 1]
-        X_unit = engine.draw(num_candidates).to(device=self.device, dtype=self.bounds.dtype)
+        X_unit = self._sobol_engine.draw(num_candidates).to(
+            device=self.device,
+            dtype=self.bounds.dtype,
+        )
 
         lb = self.bounds[0]  # (d,)
         ub = self.bounds[1]  # (d,)

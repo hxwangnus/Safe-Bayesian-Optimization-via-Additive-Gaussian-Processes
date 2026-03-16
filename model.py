@@ -100,11 +100,13 @@ def fit_gp(
         p.requires_grad = bool(train_noise)
 
     # collect parameters that are actually trainable
-    params = [
-        p
-        for p in list(model.parameters()) + list(likelihood.parameters())
-        if p.requires_grad
-    ]
+    params = []
+    seen = set()
+    for param in list(model.parameters()) + list(likelihood.parameters()):
+        if not param.requires_grad or id(param) in seen:
+            continue
+        params.append(param)
+        seen.add(id(param))
 
     # if no parameter is trainable, exit early
     if len(params) == 0:

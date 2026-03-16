@@ -3,7 +3,9 @@ from __future__ import print_function, division, absolute_import
 
 import sys
 import os
+import tempfile
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"  # allow duplicated OpenMP runtime
+os.environ.setdefault("MPLCONFIGDIR", os.path.join(tempfile.gettempdir(), "matplotlib"))
 
 import numpy as np
 
@@ -53,8 +55,9 @@ def camelback_torch(x: torch.Tensor) -> torch.Tensor:
     y = torch.maximum(-f, torch.tensor(-2.5, dtype=x.dtype, device=x.device))
     return y  # shape (batch,)
 
-# Global optimum (of the clipped function) used in your old code
-GLOBAL_OPT = 1.0316
+# Global optimum of the six-hump camel function under maximization of -f.
+GLOBAL_OPT = 1.031628453489877
+PLOT_FLOOR = 1e-12
 
 # ----------------------------------------
 # Build base kernel: k1 + k2 + k1*k2
@@ -167,7 +170,7 @@ def run_experiment(
                 y_best = y_next_val
 
             # Simple regret wrt known optimum
-            simple_regret = GLOBAL_OPT - y_best
+            simple_regret = max(GLOBAL_OPT - y_best, 0.0)
             simple_regrets.append(simple_regret)
             all_simple_regret[t, run] = simple_regret
 
@@ -187,8 +190,8 @@ def run_experiment(
 
 
 def main():
-    num_runs = 20
-    iterations = 50
+    num_runs = 100
+    iterations = 100
 
     all_simple_regret_matrix = run_experiment(
         num_runs=num_runs,
@@ -204,11 +207,15 @@ def main():
     print("Plotting simple regret curve...")
     plt.figure(figsize=(10, 6))
     x_axis = np.arange(1, iterations + 1)
-    plt.plot(x_axis, mean_simple_regret, label='Mean Simple Regret')
+    mean_curve = np.clip(mean_simple_regret, PLOT_FLOOR, None)
+    lower_band = np.clip(mean_simple_regret - std_simple_regret, PLOT_FLOOR, None)
+    upper_band = np.clip(mean_simple_regret + std_simple_regret, PLOT_FLOOR, None)
+
+    plt.plot(x_axis, mean_curve, label='Mean Simple Regret')
     plt.fill_between(
         x_axis,
-        mean_simple_regret - std_simple_regret,
-        mean_simple_regret + std_simple_regret,
+        lower_band,
+        upper_band,
         alpha=0.3,
         label='Standard Deviation'
     )

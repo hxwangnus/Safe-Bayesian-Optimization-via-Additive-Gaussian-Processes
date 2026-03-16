@@ -75,7 +75,8 @@ def load_gantry_from_csv_robust(
       X_train, y_train, X_val, y_val (torch.double on DEVICE)
       norm_info dict
     """
-    assert 0.0 < val_ratio < 1.0, "val_ratio must be in (0,1)."
+    if not 0.0 < val_ratio < 1.0:
+        raise ValueError("val_ratio must be in (0,1).")
     rng = np.random.RandomState(seed)
 
     with open(path, "r", encoding="utf-8-sig", newline="") as f:
@@ -537,10 +538,11 @@ def run_search(
     X_train, y_train, X_val, y_val,
     max_order: int = 2,
     seed: int = 0,
-    cfg: SearchConfig = SearchConfig(),
+    cfg: Optional[SearchConfig] = None,
 ):
+    cfg = cfg or SearchConfig()
     torch.manual_seed(seed)
-    n, d = X_train.shape
+    _, d = X_train.shape
 
     subsets, orders = build_subsets(d, max_order=max_order)
     mix = SharedRBFMixtureKernel(d, subsets, orders, tau=cfg.tau0).to(DEVICE).to(DTYPE)
@@ -772,7 +774,7 @@ def main():
     args = make_argparser().parse_args()
 
     # Load data
-    Xtr, ytr, Xva, yva, norm_info = load_gantry_from_csv_robust(
+    Xtr, ytr, Xva, yva, _norm_info = load_gantry_from_csv_robust(
         args.data, target=args.target, val_ratio=args.val_ratio, seed=args.seed, expect_d=9
     )
     print(f"Dataset loaded: N_train={Xtr.shape[0]}, N_val={Xva.shape[0]}, d={Xtr.shape[1]}")
