@@ -168,6 +168,7 @@ def run_experiment(
     num_runs: int = 100,
     iterations: int = 150,
     num_candidates: int = 8192,
+    switch_time: int = 0,
     device=None,
     dtype=torch.float64,
     seed=None,
@@ -220,7 +221,7 @@ def run_experiment(
             bounds=bounds,
             base_kernel=base_kernel,
             safety_threshold=safety_threshold,  # None => no constraint
-            switch_time=0,       # pure exploitation/exploration split at t=0 (like old code)
+            switch_time=switch_time,
             beta_fn=None,
             tau=0.1,             # irrelevant when there is no safety
             device=device,
@@ -275,6 +276,7 @@ def main():
     parser.add_argument("--num-runs", type=int, default=100)
     parser.add_argument("--iterations", type=int, default=150)
     parser.add_argument("--num-candidates", type=int, default=16384)
+    parser.add_argument("--switch-time", type=int, default=0, help="Number of early iterations spent in boundary expansion mode")
     parser.add_argument("--device", type=str, default="auto", help="auto, cpu, mps, cuda, or cuda:<index>")
     parser.add_argument("--dtype", type=str, default="float64", choices=["float64", "float32"])
     parser.add_argument("--seed", type=int, default=0, help="Base seed for fully reproducible runs")
@@ -290,6 +292,7 @@ def main():
         num_runs=args.num_runs,
         iterations=args.iterations,
         num_candidates=args.num_candidates,
+        switch_time=args.switch_time,
         device=device,
         dtype=dtype,
         seed=args.seed,
