@@ -262,6 +262,10 @@ def run_experiment(
     switch_time: int = 15,
     safe_retry_radius: float = 0.05,
     noise_std: float = 1e-4,
+    rkhs_bound: float = 1.0,
+    noise_bound=None,
+    delta: float = 0.05,
+    expansion_uncertainty: str = "safety",
     device=None,
     dtype=torch.float64,
     seed=None,
@@ -332,6 +336,10 @@ def run_experiment(
             likelihood_noise=max(float(noise_std) ** 2, DEFAULT_LIKELIHOOD_NOISE_FLOOR),
             sobol_seed=run_seed,
             safe_retry_radius=safe_retry_radius,
+            rkhs_bound=rkhs_bound,
+            noise_bound=noise_bound,
+            delta=delta,
+            expansion_uncertainty=expansion_uncertainty,
         )
 
         y_best = y0.item()
@@ -385,6 +393,16 @@ def main():
     parser.add_argument("--tau", type=float, default=0.2, help="Boundary width for the SafeCtrlBO safe set")
     parser.add_argument("--switch-time", type=int, default=15, help="Number of early iterations spent in boundary expansion mode")
     parser.add_argument("--safe-retry-radius", type=float, default=0.05)
+    parser.add_argument("--rkhs-bound", type=float, default=1.0, help="B in the paper-style beta_t confidence width")
+    parser.add_argument("--noise-bound", type=float, default=None, help="R in the paper-style beta_t width; defaults to sqrt(likelihood noise)")
+    parser.add_argument("--delta", type=float, default=0.05, help="Failure probability used in the beta_t confidence width")
+    parser.add_argument(
+        "--expansion-uncertainty",
+        type=str,
+        default="safety",
+        choices=["safety", "objective"],
+        help="Use safety uncertainty per Algorithm 1, or objective uncertainty for ablations",
+    )
     parser.add_argument("--x0-file", type=str, default=None, help="Optional .npy file of safe initial points with shape (runs, 6) or (runs, 1, 6)")
     parser.add_argument("--max-init-attempts", type=int, default=10000)
     parser.add_argument("--device", type=str, default="auto", help="auto, cpu, mps, cuda, or cuda:<index>")
@@ -417,6 +435,10 @@ def main():
         switch_time=args.switch_time,
         safe_retry_radius=args.safe_retry_radius,
         noise_std=args.noise_std,
+        rkhs_bound=args.rkhs_bound,
+        noise_bound=args.noise_bound,
+        delta=args.delta,
+        expansion_uncertainty=args.expansion_uncertainty,
         device=device,
         dtype=dtype,
         seed=args.seed,
