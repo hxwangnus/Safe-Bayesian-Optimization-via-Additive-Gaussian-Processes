@@ -339,9 +339,11 @@ def run_experiment(
     impact_penalty=0.20,
     method="mode-aware",
     surrogate="lmc",
+    task_rank=2,
     device=None,
     dtype=torch.float64,
     seed=0,
+    verbose=True,
 ):
     device = resolve_device(device or "auto")
     dtype = resolve_dtype(dtype)
@@ -386,7 +388,7 @@ def run_experiment(
             rkhs_bound=rkhs_bound,
             noise_bound=noise_bound,
             delta=delta,
-            task_rank=2,
+            task_rank=task_rank,
             expansion_uncertainty="safety",
             multitask_kernel=surrogate,
         )
@@ -431,6 +433,14 @@ def run_experiment(
         for mode_name in MODE_NAMES
         for constraint_name in SAFETY_NAMES
     }
+    best_safe_utility_trace = []
+    cumulative_violation_trace = []
+    cumulative_severe_violation_trace = []
+    utility_trace = []
+    min_margin_trace = []
+    safe_trace = []
+    certified_trace = []
+    mode_trace = []
 
     for t in range(iterations):
         x_next, mode, _sets = algo.suggest(num_candidates=num_candidates)
@@ -493,12 +503,22 @@ def run_experiment(
                 training_iter=training_iter,
             )
 
-        print(
-            f"iter={t + 1:03d} mode={mode:<24} "
-            f"certified={certified_decision} safe={is_safe} min_margin={min_margin:+.4f} "
-            f"worst={worst_key:<27} "
-            f"best_safe_utility={best_safe_utility:.4f}"
-        )
+        best_safe_utility_trace.append(best_safe_utility)
+        cumulative_violation_trace.append(safety_violations)
+        cumulative_severe_violation_trace.append(severe_violations)
+        utility_trace.append(util_value)
+        min_margin_trace.append(min_margin)
+        safe_trace.append(is_safe)
+        certified_trace.append(certified_decision)
+        mode_trace.append(str(mode))
+
+        if verbose:
+            print(
+                f"iter={t + 1:03d} mode={mode:<24} "
+                f"certified={certified_decision} safe={is_safe} min_margin={min_margin:+.4f} "
+                f"worst={worst_key:<27} "
+                f"best_safe_utility={best_safe_utility:.4f}"
+            )
 
     best_estimate = estimate_best_feasible_utility(
         num_samples=20000,
@@ -527,6 +547,14 @@ def run_experiment(
         "false_safe_rate": certified_false_safe_count / float(max(certified_decision_count, 1)),
         "severe_violations": severe_violations,
         "unsafe_worst_mode_constraint_counts": worst_mode_constraint_counts,
+        "best_safe_utility_trace": best_safe_utility_trace,
+        "cumulative_violation_trace": cumulative_violation_trace,
+        "cumulative_severe_violation_trace": cumulative_severe_violation_trace,
+        "utility_trace": utility_trace,
+        "min_margin_trace": min_margin_trace,
+        "safe_trace": safe_trace,
+        "certified_trace": certified_trace,
+        "mode_trace": mode_trace,
         "iterations": iterations,
     }
 
@@ -536,6 +564,7 @@ def main():
     parser.add_argument("--iterations", type=int, default=40)
     parser.add_argument("--method", type=str, default="mode-aware", choices=["mode-aware", "fused-single-task"])
     parser.add_argument("--surrogate", type=str, default="lmc", choices=["icm", "lmc"])
+    parser.add_argument("--task-rank", type=int, default=2)
     parser.add_argument("--num-candidates", type=int, default=4096)
     parser.add_argument("--num-initial", type=int, default=6)
     parser.add_argument("--switch-time", type=int, default=6)
@@ -583,6 +612,7 @@ def main():
         impact_penalty=args.impact_penalty,
         method=args.method,
         surrogate=args.surrogate,
+        task_rank=args.task_rank,
         device=device,
         dtype=dtype,
         seed=args.seed,

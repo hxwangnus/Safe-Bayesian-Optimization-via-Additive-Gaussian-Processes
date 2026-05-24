@@ -141,9 +141,9 @@ Stress setting:
   impact_threshold=0.45, impact_penalty=0.30
 
 method              mean improvement      violations      severe
-single-task fused   0.108218 +/- 0.018042  6               6
-multi-task ICM      0.097131 +/- 0.018779  0               0
-multi-task LMC      0.098880 +/- 0.020567  1               1
+single-task fused   0.1082 +/- 0.0180      6               6
+multi-task ICM      0.0945 +/- 0.0212      0               0
+multi-task LMC      0.1034 +/- 0.0184      2               2
 ```
 
 Use LMC as the default balanced surrogate. Use ICM when the experiment is
@@ -380,24 +380,27 @@ versus:
 --surrogate icm
 ```
 
-For a longer stress comparison matching the table above, use:
+For a longer stress comparison matching the table above, run the suite helper so
+the fused single-task, ICM, and LMC methods share the same seed set and plotting
+logic:
 
 ```bash
-python contact_mode_benchmark.py \
-  --method mode-aware \
-  --surrogate lmc \
-  --iterations 100 \
-  --num-candidates 1024 \
-  --num-initial 6 \
-  --switch-time 4 \
+python run_experiment_suite.py \
+  --skip-single-task \
+  --num-contact-seeds 10 \
+  --contact-iterations 100 \
+  --contact-num-candidates 1024 \
+  --contact-switch-time 4 \
   --hybrid-discontinuity \
   --impact-threshold 0.45 \
   --impact-penalty 0.30 \
-  --train-hypers-every 10 \
-  --training-iter 2 \
   --device auto \
   --dtype float64
 ```
+
+This writes the contact comparison plots, table image, CSV, and JSON summaries
+under `results/public_experiments/`. Use `contact_mode_benchmark.py` directly
+when you only want a single method/seed debug run.
 
 ## Defining Modes in Simulation
 

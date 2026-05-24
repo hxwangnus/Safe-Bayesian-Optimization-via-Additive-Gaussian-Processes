@@ -1,87 +1,117 @@
 # SafeCtrlBO
 
-Experimental GPyTorch code for safe Bayesian optimization with current workflows:
+GPyTorch implementation of SafeCtrlBO for safe Bayesian optimization in two
+maintained workflows:
 
-- `camelback.py`: run repeated Bayesian optimization on a 2D camelback benchmark using `SafeCtrlBO`.
-- `hartmann.py`: run a safe 6D Hartmann benchmark with additive kernels and safety-violation reporting.
-- `contact_mode_benchmark.py`: run a 12D mode-aware safe BO benchmark with free, transition, and contact modes.
-- `selectKernel.py`: legacy DARTS-style kernel search from gantry controller data.
+1. **Single-task SafeCtrlBO**
+   - `camelback.py`: 2D Camelback benchmark in unconstrained BO mode.
+   - `hartmann.py`: 6D Hartmann safe BO benchmark with safety-violation
+     reporting.
+2. **Mode-aware multi-task SafeCtrlBO**
+   - `contact_mode_benchmark.py`: 12D synthetic robot contact benchmark with
+     `free`, `transition`, and `contact` modes.
+   - Supports mode-aware LMC and ICM surrogates, plus a fused single-task
+     baseline for comparison.
 
-The single-task BO loop is implemented in `safectrlbo.py`, the mode-aware
-multi-task BO loop is implemented in `multitask_safectrlbo.py`, GP model
-helpers live in `model.py`, and reusable runtime helpers live in
-`device_utils.py`.
+The historical kernel-search files are kept as an archive, not as the primary
+workflow. In particular, `selectKernel.py` and `gantry_data1.csv` document an
+earlier DARTS-style kernel-search idea. `kernels.py` contains the placeholder
+kernel used by the optional GP-initialization sanity check, but it is not used
+by the maintained Camelback, Hartmann, or 12D contact benchmarks. `model.py` is
+not a user-facing experiment script; it is an internal GP model helper module
+imported by the current optimizers.
 
-## What This Repo Does
+## Supported Workflows
 
-The main idea is:
+### Single-Task SafeCtrlBO
 
-1. Learn or select a GP kernel structure from data.
-2. Freeze that kernel.
-3. Use it inside a `SafeCtrlBO` optimizer that can operate in either:
-   - safe mode, when a safety signal and threshold are provided
-   - unconstrained mode, when they are omitted
+`safectrlbo.py` implements the single-task optimizer. It can run in two modes:
 
-There are currently two separate tracks in the repo:
+- **Unconstrained BO** when `init_Y_safe=None` and `safety_threshold=None`.
+  This is how `camelback.py` is configured.
+- **Safe BO** when safety observations and a threshold are provided. This is
+  how `hartmann.py` is configured.
 
-- Gantry kernel search legacy path
-  - `selectKernel.py` loads 9D controller data from `gantry_data1.csv`
-  - it performs a DARTS-style bilevel search over kernel structure
-  - it prints a copy-pasteable frozen kernel snippet at the end
-  - this path is retained for reference; current kernel selection work has moved to the newer SPARK workflow outside this script
+The Hartmann script uses the same scalar Hartmann value as both objective and
+safety signal, matching the original single-output safe benchmark setup. It
+reports simple regret and safety violations.
 
-- Camelback benchmark
-  - `camelback.py` runs many BO trials on a 2D synthetic objective
-  - it uses `SafeCtrlBO` in unconstrained mode
-  - it writes `camelback_simple_regret.png`
+### Mode-Aware Multi-Task SafeCtrlBO
 
-- Hartmann safe benchmark
-  - `hartmann.py` runs safe BO on a 6D synthetic objective
-  - it reports simple regret and safety violations
-  - it exposes `--rkhs-bound`, `--noise-bound`, `--delta`, and `--expansion-uncertainty` for confidence-width and expansion ablations
+`multitask_safectrlbo.py` implements the mode-aware extension for hybrid or
+contact-rich robot tuning. One rollout chooses one controller vector `x`, then
+observes mode-level outputs:
 
-- Contact-mode benchmark
-  - `contact_mode_benchmark.py` runs mode-aware safe BO on a 12D synthetic controller problem
-  - each trial observes free, transition, and contact mode metrics
-  - the safe set is the intersection of all mode-wise force and stability margins
-  - the objective is a weighted utility over mode-level performance values
-  - default `--surrogate lmc` uses physics-guided LMC over the additive kernel groups as a performance/safety tradeoff
-  - optional `--surrogate icm` runs the simpler separable multi-task kernel and is currently the most conservative stress-test option
-  - optional `--hybrid-discontinuity` adds a sharp contact-impact safety cliff
-  - optional `--method fused-single-task` runs the old fused baseline `f=sum w_m f_m`, `g=min g_m,k`
+```text
+f_free(x), f_transition(x), f_contact(x)
+g_free,k(x), g_transition,k(x), g_contact,k(x)
+```
+
+The optimizer keeps the hybrid structure:
+
+- utility: `U(x) = sum_m w_m f_m(x)`
+- safety: every mode and every safety constraint must satisfy its lower
+  confidence bound
+- expansion: boundary point with largest mode-wise safety uncertainty
+- optimization: certified-safe point with largest weighted utility UCB
+
+`contact_mode_benchmark.py` supports:
+
+- `--surrogate lmc`: physics-guided LMC, one learned mode covariance per kernel
+  component
+- `--surrogate icm`: simpler separable multi-task kernel
+- `--method fused-single-task`: baseline that models weighted utility and
+  worst safety margin as scalar outputs
+- `--hybrid-discontinuity`: sharper contact-impact safety cliff for stress
+  tests
+
+See [docs/multitask_safe_bo.md](docs/multitask_safe_bo.md) for formulation,
+data shapes, partial-rollout handling, and simulation-mode guidance.
 
 ## Repository Layout
 
-- `safectrlbo.py`: main optimization loop, candidate generation, safe-set logic, and observation updates
-- `multitask_safectrlbo.py`: mode-aware multi-task safe BO for hybrid contact-rich settings
-- `model.py`: exact GP and multi-task GP wrappers plus fitting utilities
-- `selectKernel.py`: legacy kernel-structure search on CSV data
-- `kernels.py`: frozen additive kernel constructor currently used by `gp_initialization.py`
-- `gp_initialization.py`: minimal sanity check that instantiates performance and safety GPs
-- `camelback.py`: 2D benchmark script for repeated BO runs and regret plotting
+- `safectrlbo.py`: single-task SafeCtrlBO loop, candidate generation, safe-set
+  logic, and observation updates
+- `multitask_safectrlbo.py`: mode-aware multi-task SafeCtrlBO
+- `contact_mode_benchmark.py`: 12D robot contact simulation and fused
+  single-task baseline
+- `camelback.py`: 2D single-task benchmark and regret plot
+- `hartmann.py`: 6D safe single-task benchmark and violation report
+- `run_experiment_suite.py`: convenience runner for public-repo experiment
+  plots, tables, and JSON/CSV summaries
+- `model.py`: internal exact GP and multi-task GP wrappers used by the
+  optimizers
 - `device_utils.py`: device and dtype helpers
-- `gantry_data1.csv`: sample gantry dataset with 9 inputs plus `perf` and `safe`
+- `tests/`: `unittest` coverage for safe-set logic, multi-task shapes, LMC, and
+  benchmark helpers
+- `docs/multitask_safe_bo.md`: detailed mode-aware multi-task documentation
+- `selectKernel.py`, `gantry_data1.csv`: archived kernel-search materials
+  retained for reference
+- `kernels.py`: placeholder kernel module used only by the optional
+  `gp_initialization.py` sanity check
 
 ## Environment
 
-The original Linux/CUDA environment for this repo used:
+The recommended Python baseline is `3.10`.
 
-- Python 3.10.19
-- NumPy 2.2.6
-- PyTorch 2.10.0
+Known working versions:
+
+- Python 3.10.x
+- PyTorch 2.7.x
 - GPyTorch 1.15.2
+- NumPy 2.2.6
 - Matplotlib 3.10.8
 
-For a fresh macOS or Linux setup, use Python `3.10` plus the
-cross-platform `requirements.txt` below, and choose the appropriate PyTorch
-wheel for your platform when you need GPU support.
+Install into a clean virtual environment:
 
-## Installation
+```bash
+python3.10 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
 
-Create a clean virtual environment and install the core dependencies from
-`requirements.txt`.
-
-### Recommended: `uv` on macOS or Linux
+For `uv`:
 
 ```bash
 uv python install 3.10
@@ -91,41 +121,27 @@ uv pip install --upgrade pip
 uv pip install -r requirements.txt
 ```
 
-### Standard library `venv`
-
-```bash
-python3.10 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
 Notes:
 
-- The recommended Python baseline for this repo is `3.10`.
-- On Apple Silicon Macs, PyTorch uses the `mps` device for GPU acceleration. `--device auto` now prefers `cuda`, then `mps`, then `cpu`.
-- If you want NVIDIA CUDA support on Linux, install the matching PyTorch wheel from the official selector first, then install `requirements.txt`. For example, CUDA 12.8:
-
-```bash
-uv pip install --index-url https://download.pytorch.org/whl/cu128 "torch>=2.7,<2.8"
-uv pip install -r requirements.txt
-```
-
-- On macOS, if a specific op is not implemented on MPS yet, PyTorch can fall back to CPU when `PYTORCH_ENABLE_MPS_FALLBACK=1` is set before launching Python:
-
-```bash
-export PYTORCH_ENABLE_MPS_FALLBACK=1
-```
-
-- The scripts support `--device auto`, `--device cpu`, `--device mps`, and `--device cuda[:index]`.
-- `camelback.py` configures a non-interactive Matplotlib backend, so it works in headless environments.
-- The commands below assume you activated a virtual environment. If you prefer to use the committed environment in this repo, replace `python` with `./env/bin/python`.
+- Scripts support `--device auto`, `--device cpu`, `--device mps`, and
+  `--device cuda[:index]`.
+- `--device auto` prefers CUDA, then Apple MPS, then CPU.
+- On macOS, set `PYTORCH_ENABLE_MPS_FALLBACK=1` if a PyTorch op is not
+  implemented on MPS.
+- The commands below assume the virtual environment is activated. Without
+  activation, use `./.venv/bin/python` instead of `python`.
 
 ## Quick Start
 
-### 1. Sanity Check GP Initialization
+Run the unit tests:
 
-This is the fastest way to confirm the basic GP code path is working:
+```bash
+python -m unittest discover -s tests -p 'test_*.py' -v
+```
+
+Optionally run a quick GP wiring check. This exercises `model.py` with the
+placeholder kernel in `kernels.py`; it is a sanity check, not one of the main
+experiments.
 
 ```bash
 python gp_initialization.py --device auto --dtype float64
@@ -138,54 +154,23 @@ Initializing GPs with device=..., dtype=float64
 Initialized performance and safety GPs.
 ```
 
-On Apple Silicon, you can also verify MPS directly:
+Run a fast Camelback smoke test:
 
 ```bash
-python -c "import torch; print('mps built:', torch.backends.mps.is_built()); print('mps available:', torch.backends.mps.is_available())"
-python gp_initialization.py --device mps --dtype float64
+python camelback.py \
+  --num-runs 5 \
+  --iterations 20 \
+  --num-candidates 4096 \
+  --device auto \
+  --dtype float64
 ```
-
-### 2. Run the Camelback Benchmark
-
-```bash
-python camelback.py --device auto --dtype float64
-```
-
-Useful flags:
-
-- `--num-runs`: number of repeated BO runs, default `100`
-- `--iterations`: BO steps per run, default `150`
-- `--num-candidates`: Sobol candidates evaluated per step, default `16384`
-- `--seed`: base seed for reproducibility
-- `--success-threshold`: threshold used when reporting success rate
 
 Output:
 
-- console summary statistics over simple regret
+- console simple-regret summary
 - `camelback_simple_regret.png`
 
-Example for a faster smoke test:
-
-```bash
-python camelback.py --num-runs 5 --iterations 20 --num-candidates 4096 --device auto --dtype float64
-```
-
-### 3. Run the Hartmann Safe Benchmark
-
-```bash
-python hartmann.py --device auto --dtype float64
-```
-
-Useful flags:
-
-- `--d-effective`: maximum additive interaction order, default `6`
-- `--safety-threshold`: safety threshold, default `0.3`
-- `--rkhs-bound`: RKHS bound `B` used in the paper-style confidence width
-- `--noise-bound`: sub-Gaussian noise bound `R`; defaults to the likelihood-noise standard deviation
-- `--delta`: failure probability used in the confidence width
-- `--expansion-uncertainty {safety,objective}`: use Algorithm 1 safety uncertainty or the earlier objective-uncertainty ablation
-
-Example for a faster conservative smoke test:
+Run a fast Hartmann safe-BO smoke test:
 
 ```bash
 python hartmann.py \
@@ -198,140 +183,13 @@ python hartmann.py \
   --dtype float64
 ```
 
-### 4. Run Kernel Search on the Gantry Data
+Output:
 
-This script is a legacy DARTS-style path. It is still useful as a reference,
-but the newer SPARK kernel-selection workflow is not implemented in
-`selectKernel.py`.
+- console simple-regret summary
+- safety-violation report
+- `hartmann_simple_regret.png`
 
-```bash
-python selectKernel.py --data gantry_data1.csv --target perf --device auto --dtype float64
-```
-
-Useful flags:
-
-- `--target {perf,safe}`: choose which CSV target to model
-- `--max_order`: maximum interaction order in the kernel search space
-- `--outer_steps`: outer bilevel optimization steps
-- `--inner_steps`: inner hyperparameter optimization steps
-- `--topk`: number of components to include in the exported snippet
-
-Example:
-
-```bash
-python selectKernel.py \
-  --data gantry_data1.csv \
-  --target perf \
-  --max_order 2 \
-  --outer_steps 100 \
-  --inner_steps 2 \
-  --device auto \
-  --dtype float64
-```
-
-At the end of a run, the script prints:
-
-- best validation objective
-- top mixture components
-- learned shared lengthscales
-- GP likelihood noise
-- a copy-pasteable kernel snippet for reuse
-
-## Data Format
-
-`gantry_data1.csv` currently uses a header of:
-
-```text
-px1,ix1,dx1,px2,ix2,dx2,py,iy,dy,perf,safe
-```
-
-The loader in `selectKernel.py` expects:
-
-- the first 9 columns to be input features
-- `perf` or `safe` as the target column when a header is present
-- at least enough valid rows to survive cleaning and train/validation splitting
-
-The current sample file has 30 data rows plus a header row.
-
-## How SafeCtrlBO Works
-
-`SafeCtrlBO` is initialized with:
-
-- observed inputs `init_X`
-- performance observations `init_Y_perf`
-- optional safety observations `init_Y_safe`; use shape `(n, m)` for `m` safety constraints
-- box constraints `bounds`
-- a frozen `base_kernel`
-- optional paper-style confidence parameters `rkhs_bound`, `noise_bound`, `delta`, and `information_gain_fn`
-
-Behavior depends on whether safety data is supplied:
-
-- Safe mode:
-  - uses one separate GP per safety constraint
-  - certifies safe candidates only when every safety lower confidence bound satisfies its threshold
-  - accepts either a scalar `safety_threshold` or one threshold per safety constraint
-  - expands or optimizes only within the safe set
-  - uses the relaxed boundary set from the paper; if it is empty, it falls back to safe candidates with the smallest lower-confidence safety margin
-  - by default expands with `max_i sigma_g_i` on the boundary, matching Algorithm 1; pass `expansion_uncertainty="objective"` to reproduce the earlier objective-uncertainty ablation
-  - uses the paper-style width `beta_t = B + R sqrt(2(gamma_{t-1} + 1 + log(1/delta)))` by default; calibrate `B`, `R`, and `gamma` for practical safety
-  - falls back to certified-safe observed points when needed
-
-- Unconstrained mode:
-  - if `init_Y_safe=None` and `safety_threshold=None`, all candidates are treated as safe
-  - this is how `camelback.py` currently runs
-
-## How MultiTaskSafeCtrlBO Works
-
-`MultiTaskSafeCtrlBO` is for contact-rich or hybrid settings where one trial
-with controller parameters `x` produces mode-level measurements:
-
-```text
-f_free(x), f_transition(x), f_contact(x)
-g_free,k(x), g_transition,k(x), g_contact,k(x)
-```
-
-The implementation uses one GPyTorch multi-task GP for mode-level performance
-and one multi-task GP per safety constraint. The input kernel models controller
-parameters, while `MultitaskKernel` learns a mode covariance over free,
-transition, and contact outputs. The default `--surrogate lmc` uses one mode
-covariance per physics-guided kernel component; `--surrogate icm` is the simpler
-alternative with one shared input kernel and one mode covariance.
-
-In the current 12D stress benchmark, LMC is the default because it gives a
-better utility/safety tradeoff than ICM, while ICM remains the safer
-fallback when zero unsafe trials is the top priority.
-
-```text
-Stress setting:
-  10 seeds x 100 BO steps
-  hybrid discontinuity enabled
-  impact_threshold=0.45, impact_penalty=0.30
-
-method              mean improvement      violations      severe
-single-task fused   0.108218 +/- 0.018042  6               6
-multi-task ICM      0.097131 +/- 0.018779  0               0
-multi-task LMC      0.098880 +/- 0.020567  1               1
-```
-
-Use `--surrogate lmc` for the balanced default and `--surrogate icm` for a
-more conservative safe-robotics run.
-
-The acquisition keeps the hybrid structure instead of fitting a GP to a fused
-minimum:
-
-- utility: `U(x) = sum_m w_m f_m(x)`
-- safe set: every mode and every safety constraint must satisfy its LCB
-- expansion: boundary point with largest mode-wise safety uncertainty
-- optimization: safe candidate with largest weighted utility UCB
-- `switch_time`: number of BO trials spent in expansion after the initial safe data
-- safety beta: default confidence width applies a `num_modes * num_constraints` union correction
-- unsafe aborts: `observe_partial(..., missing_reason="unsafe_abort")` conservatively fills unobserved modes below threshold
-
-The utility UCB uses a conservative weighted uncertainty bound,
-`sum_m |w_m| sigma_m`, rather than assuming posterior independence between
-modes.
-
-Run the 12D smoke benchmark with:
+Run a 12D mode-aware contact smoke test:
 
 ```bash
 python contact_mode_benchmark.py \
@@ -345,41 +203,7 @@ python contact_mode_benchmark.py \
   --dtype float64
 ```
 
-Run the sharper hybrid/contact-transition benchmark with online task-covariance
-refits:
-
-```bash
-python contact_mode_benchmark.py \
-  --method mode-aware \
-  --surrogate lmc \
-  --iterations 25 \
-  --num-candidates 4096 \
-  --num-initial 6 \
-  --switch-time 8 \
-  --hybrid-discontinuity \
-  --impact-threshold 0.55 \
-  --impact-sharpness 80 \
-  --impact-penalty 0.20 \
-  --train-hypers-every 5 \
-  --training-iter 5 \
-  --device auto \
-  --dtype float64
-```
-
-For a safety-first ICM run, keep the same command and change only:
-
-```bash
---surrogate icm
-```
-
-The benchmark summary reports `violation_rate`,
-`certified_false_safe_rate`, `severe_violations`, and
-`unsafe_worst_mode_constraint_counts` in addition to best safe utility. Initial
-safe points are filtered with noise-free safety margins before noisy
-observations are stored. See `docs/multitask_safe_bo.md` for the full
-formulation, data shapes, abort handling, and simulation-mode guidance.
-
-For the fused single-task baseline:
+Run the fused single-task baseline:
 
 ```bash
 python contact_mode_benchmark.py \
@@ -388,12 +212,106 @@ python contact_mode_benchmark.py \
   --num-candidates 4096 \
   --num-initial 6 \
   --switch-time 8 \
-  --hybrid-discontinuity \
   --device auto \
   --dtype float64
 ```
 
-# Citation
+## Reproducing Public Experiment Figures
+
+`run_experiment_suite.py` runs the maintained benchmarks and writes plots,
+tables, logs, and machine-readable summaries under `results/`:
+
+```bash
+python run_experiment_suite.py \
+  --device auto \
+  --dtype float64 \
+  --hybrid-discontinuity
+```
+
+Default suite behavior:
+
+- Camelback: 100 runs x 150 BO steps with `--seed 42` and
+  `--camelback-num-candidates 16384`, matching the committed reference result
+- Hartmann: 10 runs x 100 BO steps with `--hartmann-d-effective 6`,
+  `--hartmann-num-candidates 1024`, and conservative
+  `--hartmann-rkhs-bound 5.0`
+- Contact benchmark: 10 seeds x 100 BO steps for:
+  - fused single-task baseline
+  - mode-aware ICM
+  - mode-aware LMC
+
+Important output files:
+
+- `results/public_experiments/camelback_simple_regret.png`
+- `results/public_experiments/hartmann_simple_regret.png`
+- `results/public_experiments/contact_best_safe_utility_improvement.png`
+- `results/public_experiments/contact_cumulative_violations.png`
+- `results/public_experiments/contact_summary_table.png`
+- `results/public_experiments/contact_summary.csv`
+- `results/public_experiments/contact_summary.json`
+- `results/public_experiments/suite_summary.json`
+
+To reproduce the committed Camelback reference figure specifically, keep the
+larger historical setting:
+
+```bash
+python camelback.py \
+  --num-runs 100 \
+  --iterations 150 \
+  --num-candidates 16384 \
+  --seed 42 \
+  --device auto \
+  --dtype float64
+```
+
+For contact-only stress tests:
+
+```bash
+python run_experiment_suite.py \
+  --skip-single-task \
+  --num-contact-seeds 10 \
+  --contact-iterations 100 \
+  --contact-num-candidates 1024 \
+  --contact-switch-time 4 \
+  --hybrid-discontinuity \
+  --impact-threshold 0.45 \
+  --impact-penalty 0.30 \
+  --device auto \
+  --dtype float64
+```
+
+This stress setting produced the following CPU result in the current repo over
+10 seeds x 100 BO steps:
+
+```text
+method              mean improvement      violations      severe
+single-task fused   0.1082 +/- 0.0180     6               6
+mode-aware ICM      0.0945 +/- 0.0212     0               0
+mode-aware LMC      0.1034 +/- 0.0184     2               2
+```
+
+## Archived Kernel Search
+
+`selectKernel.py` is retained as an archived DARTS-style kernel-search
+prototype for the gantry CSV data. It is not required for the current
+Camelback, Hartmann, or 12D contact experiments.
+
+The archived command is:
+
+```bash
+python selectKernel.py --data gantry_data1.csv --target perf --device auto --dtype float64
+```
+
+The legacy CSV header is:
+
+```text
+px1,ix1,dx1,px2,ix2,dx2,py,iy,dy,perf,safe
+```
+
+The loader expects the first 9 columns to be input features and `perf` or
+`safe` as the target column. The sample file has 30 data rows plus one header.
+
+## Citation
 
 If you find this repo useful, you can consider citing our work:
 
