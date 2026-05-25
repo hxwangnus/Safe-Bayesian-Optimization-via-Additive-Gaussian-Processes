@@ -233,8 +233,8 @@ Default suite behavior:
 - Camelback: 100 runs x 150 BO steps with `--seed 42` and
   `--camelback-num-candidates 16384`, matching the committed reference result
 - Hartmann: 10 runs x 100 BO steps with `--hartmann-d-effective 6`,
-  `--hartmann-num-candidates 1024`, and conservative
-  `--hartmann-rkhs-bound 5.0`
+  `--hartmann-num-candidates 1024`, `--hartmann-switch-time 5`, and
+  `--hartmann-rkhs-bound 2.0`
 - Contact benchmark: 10 seeds x 100 BO steps for:
   - fused single-task baseline
   - mode-aware ICM
@@ -250,6 +250,14 @@ Important output files:
 - `results/public_experiments/contact_summary.csv`
 - `results/public_experiments/contact_summary.json`
 - `results/public_experiments/suite_summary.json`
+
+The repository also includes committed reference figures:
+
+- `camelback_simple_regret.png`
+- `hartmann_simple_regret.png`
+- `contact_best_safe_utility_improvement.png`
+- `contact_cumulative_violations.png`
+- `contact_summary_table.png`
 
 To reproduce the committed Camelback reference figure specifically, keep the
 larger historical setting:
@@ -288,6 +296,15 @@ method              mean improvement      violations      severe
 single-task fused   0.1082 +/- 0.0180     6               6
 mode-aware ICM      0.0945 +/- 0.0212     0               0
 mode-aware LMC      0.1034 +/- 0.0184     2               2
+```
+
+The current Hartmann setting (`B=2.0`, `switch_time=5`) produced:
+
+```text
+10 runs x 100 BO steps
+final mean regret    0.2009
+final median regret  0.2065
+safety violations    0 / 1000
 ```
 
 ## Archived Kernel Search
