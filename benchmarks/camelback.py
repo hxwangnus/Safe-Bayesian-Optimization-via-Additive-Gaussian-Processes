@@ -20,8 +20,8 @@ import matplotlib.pyplot as plt
 
 import gpytorch
 
-from device_utils import configure_torch_runtime, format_runtime, resolve_device, resolve_dtype
 from safectrlbo import SafeCtrlBO
+from safectrlbo.device_utils import configure_torch_runtime, format_runtime, resolve_device, resolve_dtype
 
 # ----------------------------------------
 # Global settings

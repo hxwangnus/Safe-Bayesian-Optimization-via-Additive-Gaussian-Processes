@@ -39,7 +39,7 @@ from torch import nn
 from torch.nn.utils import parameters_to_vector, vector_to_parameters
 from copy import deepcopy
 
-from device_utils import configure_torch_runtime, format_runtime, resolve_device, resolve_dtype
+from safectrlbo.device_utils import configure_torch_runtime, format_runtime, resolve_device, resolve_dtype
 
 # -----------------------------
 # Global configuration

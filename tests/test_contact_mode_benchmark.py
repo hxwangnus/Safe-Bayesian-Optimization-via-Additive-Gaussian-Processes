@@ -6,7 +6,7 @@ import numpy as np
 import gpytorch
 import torch
 
-from contact_mode_benchmark import (
+from benchmarks.contact_mode_benchmark import (
     INPUT_DIM,
     contact_rich_12d_torch,
     fused_single_task_observations,
@@ -46,7 +46,7 @@ class ContactModeBenchmarkTests(unittest.TestCase):
                 safe.fill_(1.0)
             return perf, safe
 
-        with patch("contact_mode_benchmark.contact_rich_12d_torch", side_effect=fake_contact_function):
+        with patch("benchmarks.contact_mode_benchmark.contact_rich_12d_torch", side_effect=fake_contact_function):
             with self.assertRaises(RuntimeError):
                 sample_initial_safe_points(
                     num_initial=2,

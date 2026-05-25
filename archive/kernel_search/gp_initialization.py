@@ -1,9 +1,13 @@
 import argparse
 import torch
 
-from device_utils import configure_torch_runtime, format_runtime, resolve_device, resolve_dtype
-from kernels import make_safe_bo_kernel
-from model import build_gp, fit_gp
+from safectrlbo.device_utils import configure_torch_runtime, format_runtime, resolve_device, resolve_dtype
+from safectrlbo.model import build_gp, fit_gp
+
+if __package__:
+    from .kernels import make_safe_bo_kernel
+else:
+    from kernels import make_safe_bo_kernel
 
 
 torch.set_default_dtype(torch.double)

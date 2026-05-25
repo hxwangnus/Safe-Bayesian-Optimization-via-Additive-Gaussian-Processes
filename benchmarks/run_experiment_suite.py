@@ -15,18 +15,32 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from camelback import (
-    PLOT_FLOOR as CAMELBACK_PLOT_FLOOR,
-    run_experiment as run_camelback_experiment,
-    summarize_regret as summarize_camelback_regret,
-)
-from contact_mode_benchmark import run_experiment as run_contact_experiment
-from device_utils import configure_torch_runtime, resolve_dtype
-from hartmann import (
-    PLOT_FLOOR as HARTMANN_PLOT_FLOOR,
-    run_experiment as run_hartmann_experiment,
-    summarize_regret as summarize_hartmann_regret,
-)
+from safectrlbo.device_utils import configure_torch_runtime, resolve_dtype
+
+if __package__:
+    from .camelback import (
+        PLOT_FLOOR as CAMELBACK_PLOT_FLOOR,
+        run_experiment as run_camelback_experiment,
+        summarize_regret as summarize_camelback_regret,
+    )
+    from .contact_mode_benchmark import run_experiment as run_contact_experiment
+    from .hartmann import (
+        PLOT_FLOOR as HARTMANN_PLOT_FLOOR,
+        run_experiment as run_hartmann_experiment,
+        summarize_regret as summarize_hartmann_regret,
+    )
+else:
+    from camelback import (
+        PLOT_FLOOR as CAMELBACK_PLOT_FLOOR,
+        run_experiment as run_camelback_experiment,
+        summarize_regret as summarize_camelback_regret,
+    )
+    from contact_mode_benchmark import run_experiment as run_contact_experiment
+    from hartmann import (
+        PLOT_FLOOR as HARTMANN_PLOT_FLOOR,
+        run_experiment as run_hartmann_experiment,
+        summarize_regret as summarize_hartmann_regret,
+    )
 
 
 CONTACT_METHODS = {

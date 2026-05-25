@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "safectrlbo"
+version = "0.1.0"
+description = "Safe Bayesian optimization algorithms for control benchmarks."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "Hongxuan WANG" },
+]
+dependencies = [
+    "torch>=2.7,<2.8",
+    "gpytorch==1.15.2",
+    "numpy==2.2.6",
+    "matplotlib==3.10.8",
+]
+
+[tool.setuptools]
+packages = ["safectrlbo", "benchmarks"]
+
+[tool.setuptools.package-dir]
+safectrlbo = "src/safectrlbo"
+benchmarks = "benchmarks"

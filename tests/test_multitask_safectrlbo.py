@@ -4,7 +4,7 @@ import math
 import gpytorch
 import torch
 
-from multitask_safectrlbo import MultiTaskSafeCtrlBO
+from safectrlbo import MultiTaskSafeCtrlBO
 
 
 def make_kernel():

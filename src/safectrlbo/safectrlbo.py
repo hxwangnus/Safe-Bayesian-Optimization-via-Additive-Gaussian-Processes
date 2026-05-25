@@ -6,8 +6,8 @@ import torch
 import gpytorch
 # from botorch.utils.sampling import draw_sobol_samples
 from torch.quasirandom import SobolEngine
-from device_utils import resolve_device
-from model import build_gp, fit_gp
+from .device_utils import resolve_device
+from .model import build_gp, fit_gp
 
 
 class SafeCtrlBO:

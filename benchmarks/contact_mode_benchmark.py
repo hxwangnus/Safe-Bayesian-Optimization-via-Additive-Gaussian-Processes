@@ -8,9 +8,8 @@ import torch
 import gpytorch
 from gpytorch.utils.warnings import GPInputWarning
 
-from device_utils import configure_torch_runtime, format_runtime, resolve_device, resolve_dtype
-from multitask_safectrlbo import MultiTaskSafeCtrlBO
-from safectrlbo import SafeCtrlBO
+from safectrlbo import MultiTaskSafeCtrlBO, SafeCtrlBO
+from safectrlbo.device_utils import configure_torch_runtime, format_runtime, resolve_device, resolve_dtype
 
 
 os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")

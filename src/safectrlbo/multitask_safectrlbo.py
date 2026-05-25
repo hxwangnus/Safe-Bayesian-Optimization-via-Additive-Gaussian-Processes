@@ -4,8 +4,8 @@ import torch
 import gpytorch
 from torch.quasirandom import SobolEngine
 
-from device_utils import resolve_device
-from model import build_mode_lmc_gp, build_mode_task_gp, fit_mode_task_gp
+from .device_utils import resolve_device
+from .model import build_mode_lmc_gp, build_mode_task_gp, fit_mode_task_gp
 
 
 class MultiTaskSafeCtrlBO:

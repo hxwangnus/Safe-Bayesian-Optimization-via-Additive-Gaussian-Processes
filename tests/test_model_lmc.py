@@ -3,7 +3,7 @@ import unittest
 import gpytorch
 import torch
 
-from model import build_mode_lmc_gp, fit_mode_task_gp, iter_multitask_kernels
+from safectrlbo.model import build_mode_lmc_gp, fit_mode_task_gp, iter_multitask_kernels
 
 
 def make_component(active_dims):

@@ -265,7 +265,8 @@ GPs for safety.
 
 ## Contact Benchmark
 
-`contact_mode_benchmark.py` defines a 12D controller-tuning problem with:
+`benchmarks/contact_mode_benchmark.py` defines a 12D controller-tuning problem
+with:
 
 - speed/tracking gains
 - stiffness/damping terms
@@ -276,7 +277,7 @@ GPs for safety.
 Run a smooth smoke test:
 
 ```bash
-python contact_mode_benchmark.py \
+python -m benchmarks.contact_mode_benchmark \
   --method mode-aware \
   --surrogate lmc \
   --iterations 25 \
@@ -290,7 +291,7 @@ python contact_mode_benchmark.py \
 Run the sharper contact-transition benchmark:
 
 ```bash
-python contact_mode_benchmark.py \
+python -m benchmarks.contact_mode_benchmark \
   --method mode-aware \
   --surrogate lmc \
   --iterations 25 \
@@ -341,7 +342,7 @@ positive.
 The same script can run the fused single-task baseline:
 
 ```bash
-python contact_mode_benchmark.py \
+python -m benchmarks.contact_mode_benchmark \
   --method fused-single-task \
   --iterations 25 \
   --num-candidates 4096 \
@@ -385,7 +386,7 @@ the fused single-task, ICM, and LMC methods share the same seed set and plotting
 logic:
 
 ```bash
-python run_experiment_suite.py \
+python -m benchmarks.run_experiment_suite \
   --skip-single-task \
   --num-contact-seeds 10 \
   --contact-iterations 100 \
@@ -399,8 +400,9 @@ python run_experiment_suite.py \
 ```
 
 This writes the contact comparison plots, table image, CSV, and JSON summaries
-under `results/public_experiments/`. Use `contact_mode_benchmark.py` directly
-when you only want a single method/seed debug run.
+under `results/public_experiments/`. Use
+`python -m benchmarks.contact_mode_benchmark` directly when you only want a
+single method/seed debug run.
 
 ## Defining Modes in Simulation
 

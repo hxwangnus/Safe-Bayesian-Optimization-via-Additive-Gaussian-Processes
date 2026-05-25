@@ -4,39 +4,39 @@ GPyTorch implementation of SafeCtrlBO for safe Bayesian optimization in two
 maintained workflows:
 
 1. **Single-task SafeCtrlBO**
-   - `camelback.py`: 2D Camelback benchmark in unconstrained BO mode.
-   - `hartmann.py`: 6D Hartmann safe BO benchmark with safety-violation
+   - `benchmarks/camelback.py`: 2D Camelback benchmark in unconstrained BO mode.
+   - `benchmarks/hartmann.py`: 6D Hartmann safe BO benchmark with safety-violation
      reporting.
 2. **Mode-aware multi-task SafeCtrlBO**
-   - `contact_mode_benchmark.py`: 12D synthetic robot contact benchmark with
-     `free`, `transition`, and `contact` modes.
+   - `benchmarks/contact_mode_benchmark.py`: 12D synthetic robot contact
+     benchmark with `free`, `transition`, and `contact` modes.
    - Supports mode-aware LMC and ICM surrogates, plus a fused single-task
      baseline for comparison.
 
 The historical kernel-search files are kept as an archive, not as the primary
-workflow. In particular, `selectKernel.py` and `gantry_data1.csv` document an
-earlier DARTS-style kernel-search idea. `kernels.py` contains the placeholder
-kernel used by the optional GP-initialization sanity check, but it is not used
-by the maintained Camelback, Hartmann, or 12D contact benchmarks. `model.py` is
-not a user-facing experiment script; it is an internal GP model helper module
-imported by the current optimizers.
+workflow. In particular, `archive/kernel_search/selectKernel.py` and
+`archive/kernel_search/gantry_data1.csv` document an earlier DARTS-style
+kernel-search idea. `src/safectrlbo/model.py` is not a user-facing experiment
+script; it is an internal GP model helper module imported by the current
+optimizers.
 
 ## Supported Workflows
 
 ### Single-Task SafeCtrlBO
 
-`safectrlbo.py` implements the single-task optimizer. It can run in two modes:
+`src/safectrlbo/safectrlbo.py` implements the single-task optimizer. It can run
+in two modes:
 
 - **Unconstrained BO** when `init_Y_safe=None` and `safety_threshold=None`.
-  This is how `camelback.py` is configured.
+  This is how `benchmarks/camelback.py` is configured.
 - **Safe BO** when safety observations and a threshold are provided. This is
-  how `hartmann.py` is configured.
+  how `benchmarks/hartmann.py` is configured.
 
 For historical comparability with the committed Camelback reference plot,
-`camelback.py` defaults to `--beta-mode legacy`, which passes the confidence
-width `sqrt(2 log(t + 1))` explicitly. Use `--beta-mode paper` to exercise
-`SafeCtrlBO`'s current paper-style default width based on `B`, `R`, `delta`,
-and the information-gain approximation.
+`benchmarks/camelback.py` defaults to `--beta-mode legacy`, which passes the
+confidence width `sqrt(2 log(t + 1))` explicitly. Use `--beta-mode paper` to
+exercise `SafeCtrlBO`'s current paper-style default width based on `B`, `R`,
+`delta`, and the information-gain approximation.
 
 The Hartmann script uses the same scalar Hartmann value as both objective and
 safety signal, matching the original single-output safe benchmark setup. It
@@ -44,9 +44,9 @@ reports simple regret and safety violations.
 
 ### Mode-Aware Multi-Task SafeCtrlBO
 
-`multitask_safectrlbo.py` implements the mode-aware extension for hybrid or
-contact-rich robot tuning. One rollout chooses one controller vector `x`, then
-observes mode-level outputs:
+`src/safectrlbo/multitask_safectrlbo.py` implements the mode-aware extension
+for hybrid or contact-rich robot tuning. One rollout chooses one controller
+vector `x`, then observes mode-level outputs:
 
 ```text
 f_free(x), f_transition(x), f_contact(x)
@@ -61,7 +61,7 @@ The optimizer keeps the hybrid structure:
 - expansion: boundary point with largest mode-wise safety uncertainty
 - optimization: certified-safe point with largest weighted utility UCB
 
-`contact_mode_benchmark.py` supports:
+`benchmarks/contact_mode_benchmark.py` supports:
 
 - `--surrogate lmc`: physics-guided LMC, one learned mode covariance per kernel
   component
@@ -76,25 +76,17 @@ data shapes, partial-rollout handling, and simulation-mode guidance.
 
 ## Repository Layout
 
-- `safectrlbo.py`: single-task SafeCtrlBO loop, candidate generation, safe-set
-  logic, and observation updates
-- `multitask_safectrlbo.py`: mode-aware multi-task SafeCtrlBO
-- `contact_mode_benchmark.py`: 12D robot contact simulation and fused
-  single-task baseline
-- `camelback.py`: 2D single-task benchmark and regret plot
-- `hartmann.py`: 6D safe single-task benchmark and violation report
-- `run_experiment_suite.py`: convenience runner for public-repo experiment
-  plots, tables, and JSON/CSV summaries
-- `model.py`: internal exact GP and multi-task GP wrappers used by the
-  optimizers
-- `device_utils.py`: device and dtype helpers
+- `src/safectrlbo/`: installable package with the single-task optimizer,
+  mode-aware optimizer, GP model helpers, and device/dtype utilities
+- `benchmarks/`: maintained Camelback, Hartmann, 12D contact, and suite-runner
+  experiment scripts
+- `archive/kernel_search/`: historical DARTS-style kernel-search prototype and
+  its gantry sample CSV, retained for reference only
 - `tests/`: `unittest` coverage for safe-set logic, multi-task shapes, LMC, and
   benchmark helpers
 - `docs/multitask_safe_bo.md`: detailed mode-aware multi-task documentation
-- `selectKernel.py`, `gantry_data1.csv`: archived kernel-search materials
-  retained for reference
-- `kernels.py`: placeholder kernel module used only by the optional
-  `gp_initialization.py` sanity check
+- `requirements.txt`: dependency pins mirrored by `pyproject.toml`
+- `*_simple_regret.png`, `contact_*.png`: committed reference figures
 
 ## Environment
 
@@ -114,7 +106,7 @@ Install into a clean virtual environment:
 python3.10 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+python -m pip install -e .
 ```
 
 For `uv`:
@@ -124,7 +116,7 @@ uv python install 3.10
 uv venv --python 3.10 .venv
 source .venv/bin/activate
 uv pip install --upgrade pip
-uv pip install -r requirements.txt
+uv pip install -e .
 ```
 
 Notes:
@@ -145,25 +137,10 @@ Run the unit tests:
 python -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
-Optionally run a quick GP wiring check. This exercises `model.py` with the
-placeholder kernel in `kernels.py`; it is a sanity check, not one of the main
-experiments.
-
-```bash
-python gp_initialization.py --device auto --dtype float64
-```
-
-Expected output:
-
-```text
-Initializing GPs with device=..., dtype=float64
-Initialized performance and safety GPs.
-```
-
 Run a fast Camelback smoke test:
 
 ```bash
-python camelback.py \
+python -m benchmarks.camelback \
   --num-runs 5 \
   --iterations 20 \
   --num-candidates 4096 \
@@ -179,7 +156,7 @@ Output:
 Run a fast Hartmann safe-BO smoke test:
 
 ```bash
-python hartmann.py \
+python -m benchmarks.hartmann \
   --num-runs 3 \
   --iterations 20 \
   --num-candidates 2048 \
@@ -198,7 +175,7 @@ Output:
 Run a 12D mode-aware contact smoke test:
 
 ```bash
-python contact_mode_benchmark.py \
+python -m benchmarks.contact_mode_benchmark \
   --method mode-aware \
   --surrogate lmc \
   --iterations 25 \
@@ -212,7 +189,7 @@ python contact_mode_benchmark.py \
 Run the fused single-task baseline:
 
 ```bash
-python contact_mode_benchmark.py \
+python -m benchmarks.contact_mode_benchmark \
   --method fused-single-task \
   --iterations 25 \
   --num-candidates 4096 \
@@ -224,11 +201,11 @@ python contact_mode_benchmark.py \
 
 ## Reproducing Public Experiment Figures
 
-`run_experiment_suite.py` runs the maintained benchmarks and writes plots,
-tables, logs, and machine-readable summaries under `results/`:
+`benchmarks/run_experiment_suite.py` runs the maintained benchmarks and writes
+plots, tables, logs, and machine-readable summaries under `results/`:
 
 ```bash
-python run_experiment_suite.py \
+python -m benchmarks.run_experiment_suite \
   --device auto \
   --dtype float64 \
   --hybrid-discontinuity
@@ -270,7 +247,7 @@ To reproduce the committed Camelback reference figure specifically, keep the
 larger historical setting:
 
 ```bash
-python camelback.py \
+python -m benchmarks.camelback \
   --num-runs 100 \
   --iterations 150 \
   --num-candidates 16384 \
@@ -283,7 +260,7 @@ python camelback.py \
 For contact-only stress tests:
 
 ```bash
-python run_experiment_suite.py \
+python -m benchmarks.run_experiment_suite \
   --skip-single-task \
   --num-contact-seeds 10 \
   --contact-iterations 100 \
@@ -327,14 +304,24 @@ safety violations    0 / 1000
 
 ## Archived Kernel Search
 
-`selectKernel.py` is retained as an archived DARTS-style kernel-search
-prototype for the gantry CSV data. It is not required for the current
-Camelback, Hartmann, or 12D contact experiments.
+`archive/kernel_search/selectKernel.py` is retained as an archived DARTS-style
+kernel-search prototype for the gantry CSV data. It is not required for the
+current Camelback, Hartmann, or 12D contact experiments.
 
 The archived command is:
 
 ```bash
-python selectKernel.py --data gantry_data1.csv --target perf --device auto --dtype float64
+python archive/kernel_search/selectKernel.py \
+  --data archive/kernel_search/gantry_data1.csv \
+  --target perf \
+  --device auto \
+  --dtype float64
+```
+
+The old GP-initialization sanity check is archived with the same prototype:
+
+```bash
+python archive/kernel_search/gp_initialization.py --device auto --dtype float64
 ```
 
 The legacy CSV header is:

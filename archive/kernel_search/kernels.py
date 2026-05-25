@@ -1,11 +1,9 @@
 """
-Placeholder kernel module.
+Archived placeholder kernel module for the historical kernel-search prototype.
 
-In the intended workflow for this repo, `selectKernel.py` is used to search for a
-kernel and export a copy-pasteable snippet. That exported code should then replace
-the contents of this file.
-
-The current implementation is only a temporary stand-in so imports keep working.
+The maintained SafeCtrlBO benchmarks build their kernels directly in
+`benchmarks/`. This file remains with `selectKernel.py` only to preserve the
+old GP-initialization sanity check.
 """
 
 import torch
@@ -33,10 +31,7 @@ def _make_scaled_product_rbf(dims, lengthscales, outputscale):
 
 def make_safe_bo_kernel(dtype=torch.double, device="cpu"):
     """
-    Temporary stand-in kernel.
-
-    Replace this function with the exported output of `selectKernel.py` when you
-    have selected a real kernel for your use case.
+    Stand-in kernel used by the archived GP-initialization sanity check.
     """
     components = [
         _make_scaled_product_rbf(
