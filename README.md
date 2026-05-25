@@ -32,6 +32,12 @@ imported by the current optimizers.
 - **Safe BO** when safety observations and a threshold are provided. This is
   how `hartmann.py` is configured.
 
+For historical comparability with the committed Camelback reference plot,
+`camelback.py` defaults to `--beta-mode legacy`, which passes the confidence
+width `sqrt(2 log(t + 1))` explicitly. Use `--beta-mode paper` to exercise
+`SafeCtrlBO`'s current paper-style default width based on `B`, `R`, `delta`,
+and the information-gain approximation.
+
 The Hartmann script uses the same scalar Hartmann value as both objective and
 safety signal, matching the original single-output safe benchmark setup. It
 reports simple regret and safety violations.
@@ -231,7 +237,8 @@ python run_experiment_suite.py \
 Default suite behavior:
 
 - Camelback: 100 runs x 150 BO steps with `--seed 42` and
-  `--camelback-num-candidates 16384`, matching the committed reference result
+  `--camelback-num-candidates 16384`, `--camelback-beta-mode legacy`,
+  matching the committed reference result
 - Hartmann: 10 runs x 100 BO steps with `--hartmann-d-effective 6`,
   `--hartmann-num-candidates 1024`, `--hartmann-switch-time 5`, and
   `--hartmann-rkhs-bound 2.0`
@@ -267,6 +274,7 @@ python camelback.py \
   --num-runs 100 \
   --iterations 150 \
   --num-candidates 16384 \
+  --beta-mode legacy \
   --seed 42 \
   --device auto \
   --dtype float64
@@ -296,6 +304,16 @@ method              mean improvement      violations      severe
 single-task fused   0.1082 +/- 0.0180     6               6
 mode-aware ICM      0.0945 +/- 0.0212     0               0
 mode-aware LMC      0.1034 +/- 0.0184     2               2
+```
+
+The committed Camelback reference (`--beta-mode legacy`) produced:
+
+```text
+100 runs x 150 BO steps
+step 100 mean regret     8.19e-4
+step 100 median regret   4.80e-4
+final mean regret        5.98e-4
+final median regret      2.72e-4
 ```
 
 The current Hartmann setting (`B=2.0`, `switch_time=5`) produced:

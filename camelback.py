@@ -161,6 +161,21 @@ def make_additive_kernel_k1_k2_k1k2(device, dtype):
     base_kernel = gpytorch.kernels.AdditiveKernel(k1, k2, k12)
     return base_kernel.to(device=device, dtype=dtype)
 
+
+def make_legacy_beta_width_fn(device, dtype):
+    """
+    Confidence-width schedule used for the committed Camelback reference plot.
+
+    Older SafeCtrlBO revisions defined beta_t = 2 log(t + 1) and then used
+    sqrt(beta_t) inside the UCB.  The current optimizer expects beta_fn to
+    return the width directly, hence sqrt(2 log(t + 1)).
+    """
+    def beta_width(n):
+        n_tensor = torch.tensor(float(n + 1.0), dtype=dtype, device=device)
+        return torch.sqrt(2.0 * torch.log(n_tensor))
+
+    return beta_width
+
 # ----------------------------------------
 # Main experiment: SafeCtrlBO on Camelback with NO explicit safety
 # ----------------------------------------
@@ -169,6 +184,7 @@ def run_experiment(
     iterations: int = 150,
     num_candidates: int = 8192,
     switch_time: int = 0,
+    beta_mode: str = "legacy",
     device=None,
     dtype=torch.float64,
     seed=None,
@@ -186,6 +202,9 @@ def run_experiment(
     bounds = make_bounds(device, dtype)
     configure_reproducibility(seed, device)
     run_seeds = make_run_seeds(num_runs, seed)
+    if beta_mode not in {"legacy", "paper"}:
+        raise ValueError("beta_mode must be 'legacy' or 'paper'.")
+    beta_fn = make_legacy_beta_width_fn(device, dtype) if beta_mode == "legacy" else None
 
     all_simple_regret = np.zeros((iterations, num_runs), dtype=float)
 
@@ -222,7 +241,7 @@ def run_experiment(
             base_kernel=base_kernel,
             safety_threshold=safety_threshold,  # None => no constraint
             switch_time=switch_time,
-            beta_fn=None,
+            beta_fn=beta_fn,
             tau=0.1,             # irrelevant when there is no safety
             device=device,
             init_training_iter=0, # keep kernel hyperparameters fixed
@@ -277,6 +296,12 @@ def main():
     parser.add_argument("--iterations", type=int, default=150)
     parser.add_argument("--num-candidates", type=int, default=16384)
     parser.add_argument("--switch-time", type=int, default=0, help="Number of early iterations spent in boundary expansion mode")
+    parser.add_argument(
+        "--beta-mode",
+        choices=["legacy", "paper"],
+        default="legacy",
+        help="Camelback confidence-width schedule: legacy reproduces the committed reference plot; paper uses SafeCtrlBO's default paper-style beta.",
+    )
     parser.add_argument("--device", type=str, default="auto", help="auto, cpu, mps, cuda, or cuda:<index>")
     parser.add_argument("--dtype", type=str, default="float64", choices=["float64", "float32"])
     parser.add_argument("--seed", type=int, default=0, help="Base seed for fully reproducible runs")
@@ -293,6 +318,7 @@ def main():
         iterations=args.iterations,
         num_candidates=args.num_candidates,
         switch_time=args.switch_time,
+        beta_mode=args.beta_mode,
         device=device,
         dtype=dtype,
         seed=args.seed,

@@ -123,6 +123,7 @@ def run_single_task_suite(args, out_dir, device, dtype, quiet):
             iterations=args.camelback_iterations,
             num_candidates=args.camelback_num_candidates,
             switch_time=args.camelback_switch_time,
+            beta_mode=args.camelback_beta_mode,
             device=device,
             dtype=dtype,
             seed=args.seed,
@@ -381,6 +382,7 @@ def build_parser():
     parser.add_argument("--camelback-iterations", type=int, default=150)
     parser.add_argument("--camelback-num-candidates", type=int, default=16384)
     parser.add_argument("--camelback-switch-time", type=int, default=0)
+    parser.add_argument("--camelback-beta-mode", choices=["legacy", "paper"], default="legacy")
     parser.add_argument("--camelback-success-threshold", type=float, default=1e-4)
 
     parser.add_argument("--hartmann-num-runs", type=int, default=10)
